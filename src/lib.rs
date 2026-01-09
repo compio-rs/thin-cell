@@ -4,6 +4,7 @@
 
 use std::{
     cell::{Cell, UnsafeCell},
+    fmt::{self, Debug, Display},
     marker::PhantomData,
     mem::{ManuallyDrop, size_of},
     ops::{Deref, DerefMut},
@@ -58,8 +59,10 @@ impl<T> ThinCell<T> {
         }
     }
 
-    /// Consumes the `ThinCell`, returning the inner value if there are no
-    /// other owners and it is not currently borrowed.
+    /// Consumes the `ThinCell` and try to get inner value.
+    ///
+    /// Returns the inner value in [`Ok`] if there are no other owners and it is
+    /// not currently borrowed, return `Err(self)` otherwise.
     pub fn try_unwrap(self) -> Result<T, Self> {
         let inner = self.inner();
         let s = inner.state.get();
@@ -88,22 +91,6 @@ impl<T> ThinCell<T> {
 
 impl<T: ?Sized> ThinCell<T> {
     const SIZED: bool = size_of::<*const Inner<T>>() == size_of::<usize>();
-
-    /// Creates a new `ThinCell<U>` from `data: U` and coerces it to
-    /// `ThinCell<T>`.
-    ///
-    /// # Safety
-    /// `coerce` function must ensure the returned pointer is:
-    /// - a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type `U`
-    /// - with same address (bare data pointer without metadata) as input
-    pub unsafe fn new_unsize<U>(
-        data: U,
-        coerce: impl Fn(*const Inner<U>) -> *const Inner<T>,
-    ) -> Self {
-        let this = ThinCell::new(data);
-        // SAFETY: We're holding unique ownership and is not borrowed.
-        unsafe { this.unsize_unchecked(coerce) }
-    }
 
     /// Reconstructs the raw pointer to the inner allocation.
     fn inner_ptr(&self) -> *const Inner<T> {
@@ -238,6 +225,47 @@ impl<T: ?Sized> ThinCell<T> {
         })
     }
 
+    /// Creates a new `ThinCell<U>` from `data: U` and coerces it to
+    /// `ThinCell<T>`.
+    ///
+    /// # Safety
+    /// `coerce` function must ensure the returned pointer is:
+    /// - a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type `U`
+    /// - with same address (bare data pointer without metadata) as input
+    pub unsafe fn new_unsize<U>(
+        data: U,
+        coerce: impl Fn(*const Inner<U>) -> *const Inner<T>,
+    ) -> Self {
+        let this = ThinCell::new(data);
+        // SAFETY: We're holding unique ownership and is not borrowed.
+        unsafe { this.unsize_unchecked(coerce) }
+    }
+
+    /// Manually coerce to unsize with some checks.
+    ///
+    /// # Safety
+    /// `coerce` function must ensure the returned pointer is:
+    /// - a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type `U`
+    /// - with same address (bare data pointer without metadata) as input
+    ///
+    /// See [`ThinCell::unsize_unchecked`] for details.
+    pub unsafe fn unsize<U: ?Sized>(
+        self,
+        coerce: impl Fn(*const Inner<T>) -> *const Inner<U>,
+    ) -> ThinCell<U> {
+        let inner = self.inner();
+        let s = inner.state.get();
+
+        assert!(!s.is_shared(), "Cannot coerce shared `ThinCell`");
+        assert!(!s.is_borrowed(), "Cannot coerce borrowed `ThinCell`");
+
+        // SAFETY: As tested above, the `ThinCell` is:
+        // - not shared, and
+        // - not borrowed
+        // - validity of `coerce` is guaranteed by caller
+        unsafe { self.unsize_unchecked(coerce) }
+    }
+
     /// Manually coerce to unsize without checks
     ///
     /// The returned `U` must be a valid unsizing of `T`, i.e., some `dyn
@@ -278,31 +306,6 @@ impl<T: ?Sized> ThinCell<T> {
         }
     }
 
-    /// Manually coerce to unsize with some checks.
-    ///
-    /// # Safety
-    /// `coerce` function must ensure the returned pointer is:
-    /// - a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type `U`
-    /// - with same address (bare data pointer without metadata) as input
-    ///
-    /// See [`ThinCell::unsize_unchecked`] for details.
-    pub unsafe fn unsize<U: ?Sized>(
-        self,
-        coerce: impl Fn(*const Inner<T>) -> *const Inner<U>,
-    ) -> ThinCell<U> {
-        let inner = self.inner();
-        let s = inner.state.get();
-
-        assert!(!s.is_shared(), "Cannot coerce shared `ThinCell`");
-        assert!(!s.is_borrowed(), "Cannot coerce borrowed `ThinCell`");
-
-        // SAFETY: As tested above, the `ThinCell` is:
-        // - not shared, and
-        // - not borrowed
-        // - validity of `coerce` is guaranteed by caller
-        unsafe { self.unsize_unchecked(coerce) }
-    }
-
     /// Returns the raw pointer to the inner allocation.
     pub fn as_ptr(&self) -> *const () {
         self.ptr.as_ptr()
@@ -332,6 +335,12 @@ impl<'a, T: ?Sized> Deref for Ref<'a, T> {
 impl<'a, T: ?Sized> DerefMut for Ref<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
         self.value
+    }
+}
+
+impl<'a, T: Display + ?Sized> Display for Ref<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(&**self, f)
     }
 }
 
@@ -371,5 +380,57 @@ impl<T: ?Sized> Drop for ThinCell<T> {
                 inner.state.set(current.dec());
             }
         }
+    }
+}
+
+impl<T: Default> Default for ThinCell<T> {
+    fn default() -> Self {
+        ThinCell::new(T::default())
+    }
+}
+
+impl<T: Debug + ?Sized> Debug for ThinCell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = self.inner();
+        let state = inner.state.get();
+        let val = self.try_borrow();
+        struct Helper<'a, T: ?Sized>(Option<&'a T>);
+        impl<T: Debug + ?Sized> Debug for Helper<'_, T> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match &self.0 {
+                    Some(v) => v.fmt(f),
+                    None => f.write_str("<borrowed>"),
+                }
+            }
+        }
+        f.debug_struct("ThinCell")
+            .field("data", &Helper(val.as_deref()))
+            .field("ref_count", &state.count())
+            .field("is_borrowed", &state.is_borrowed())
+            .finish()
+    }
+}
+
+impl<T: PartialEq + ?Sized> PartialEq<ThinCell<T>> for ThinCell<T> {
+    /// Compares the inner values for equality.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either `ThinCell` is currently borrowed.
+    fn eq(&self, other: &Self) -> bool {
+        self.borrow().eq(&other.borrow())
+    }
+}
+
+impl<T: Eq + ?Sized> Eq for ThinCell<T> {}
+
+impl<T: Ord + ?Sized> PartialOrd<ThinCell<T>> for ThinCell<T> {
+    /// Compares the inner values.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either `ThinCell` is currently borrowed.
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.borrow().partial_cmp(&other.borrow())
     }
 }
