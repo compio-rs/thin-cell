@@ -10,7 +10,7 @@
 
 A compact, single-threaded smart pointer combining reference counting and interior mutability.
 
-`ThinCell` is a space-efficient alternative to `Rc` and `borrow_mut`-only `RefCell` that the itself is always **1 pointer-sized** no matter if `T` is `Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2 pointer-sized for `T: !Sized`.
+`ThinCell` is a space-efficient alternative to `Rc` and `borrow_mut`-only `RefCell` that itself is always **1 pointer-sized** no matter if `T` is `Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2 pointer-sized for `T: !Sized`.
 
 ## Features
 
