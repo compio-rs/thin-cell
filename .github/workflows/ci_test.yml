@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - ".github/workflows/ci_test.yml"
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - ".github/workflows/ci_test.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain: ["nightly", "beta", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        run: rustup toolchain install ${{ matrix.toolchain }}
+      - name: Test on ${{ matrix.toolchain }}
+        shell: bash
+        run: cargo +${{ matrix.toolchain }} test
