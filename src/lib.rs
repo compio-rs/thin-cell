@@ -302,6 +302,16 @@ impl<T: ?Sized> ThinCell<T> {
         // - validity of `coerce` is guaranteed by caller
         unsafe { self.unsize_unchecked(coerce) }
     }
+
+    /// Returns the raw pointer to the inner allocation.
+    pub fn as_ptr(&self) -> *const () {
+        self.ptr.as_ptr()
+    }
+
+    /// Returns `true` if the two `ThinCell`s point to the same allocation.
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.as_ptr(), other.as_ptr())
+    }
 }
 
 impl<'a, T: ?Sized> Drop for Ref<'a, T> {
