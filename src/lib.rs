@@ -16,8 +16,6 @@ use state::State;
 mod fat_ptr;
 use fat_ptr::FatPtr;
 
-use crate::fat_ptr::is_fat;
-
 /// The inner allocation of `ThinCell`
 ///
 /// This should not be used except in unsize coercion solely as a type.
@@ -62,19 +60,16 @@ impl<T> ThinCell<T> {
 
     /// Consumes the `ThinCell`, returning the inner value if there are no
     /// other owners and it is not currently borrowed.
-    pub fn try_unwrap(self) -> Option<T>
-    where
-        T: Sized,
-    {
+    pub fn try_unwrap(self) -> Result<T, Self> {
         let inner = self.inner();
         let s = inner.state.get();
 
         if s.count() != 1 || s.is_borrowed() {
-            return None;
+            return Err(self);
         }
 
         // SAFETY: As tested above, there are no other owners and it is not borrowed
-        Some(self.unwrap_unchecked())
+        Ok(unsafe { self.unwrap_unchecked() })
     }
 
     /// Consumes the `ThinCell`, returning the inner value.
@@ -82,10 +77,7 @@ impl<T> ThinCell<T> {
     /// # Safety
     /// The caller must guarantee that there are no other owners and it is not
     /// currently borrowed.
-    pub fn unwrap_unchecked(self) -> T
-    where
-        T: Sized,
-    {
+    pub unsafe fn unwrap_unchecked(self) -> T {
         let this = ManuallyDrop::new(self);
         // SAFETY: guaranteed by caller to have unique ownership and is not borrowed
         let inner = unsafe { Box::from_raw(this.inner_ptr() as *mut Inner<T>) };
@@ -111,24 +103,6 @@ impl<T: ?Sized> ThinCell<T> {
         let this = ThinCell::new(data);
         // SAFETY: We're holding unique ownership and is not borrowed.
         unsafe { this.unsize_unchecked(coerce) }
-    }
-
-    /// Casts the `ThinCell<T>` to `ThinCell<U>` without changing the inner
-    /// allocation.
-    ///
-    /// # Safety
-    /// The caller must ensure that `T` and `U` have the same layout.
-    pub unsafe fn cast<U: ?Sized>(self) -> ThinCell<U> {
-        let mut this = ManuallyDrop::new(self);
-        // if it's a sized pointer, clear metadata
-        if const { !is_fat::<U>() } {
-            this.inner_mut().metadata = 0;
-        }
-        ThinCell {
-            // SAFETY: `ptr` is valid as it comes from `self`
-            ptr: unsafe { NonNull::new_unchecked(this.ptr.as_ptr()) },
-            _marker: PhantomData,
-        }
     }
 
     /// Reconstructs the raw pointer to the inner allocation.
@@ -160,11 +134,6 @@ impl<T: ?Sized> ThinCell<T> {
         unsafe { &*self.inner_ptr() }
     }
 
-    /// Returns a reference to the inner allocation.
-    fn inner_mut(&mut self) -> &mut Inner<T> {
-        unsafe { &mut *(self.inner_ptr() as *mut _) }
-    }
-
     /// Deallocates the inner allocation.
     ///
     /// # Safety
@@ -177,7 +146,7 @@ impl<T: ?Sized> ThinCell<T> {
     ///
     /// The returned pointer points to the inner allocation. To restore the
     /// `ThinCell`, use [`ThinCell::from_raw`].
-    pub fn leak(self) -> *const () {
+    pub fn leak(self) -> *mut () {
         let this = ManuallyDrop::new(self);
         this.ptr.as_ptr()
     }
@@ -281,23 +250,26 @@ impl<T: ?Sized> ThinCell<T> {
     /// - have unique ownership (count == 1)
     /// - not be borrowed
     ///
-    ///   In particular, this is the exact state after [`ThinCell::new`].
+    /// In particular, this is the exact state after [`ThinCell::new`].
     ///
-    /// `coerce` function must ensure the returned pointer is:
-    /// - a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type `U`
-    /// - with same address (bare data pointer without metadata) as input
+    /// `coerce` function must ensure the returned pointer:
+    /// - is a valid unsizing of `T`, e.g., some `dyn Trait` with concrete type
+    ///   `U`
+    /// - consists the same address (bare data pointer without metadata) as the
+    ///   input
     pub unsafe fn unsize_unchecked<U: ?Sized>(
         self,
         coerce: impl Fn(*const Inner<T>) -> *const Inner<U>,
     ) -> ThinCell<U> {
-        let mut this = ManuallyDrop::new(self);
+        let this = ManuallyDrop::new(self);
 
         let old_ptr = this.inner_ptr();
         let fat_ptr = coerce(old_ptr);
 
         let FatPtr { ptr, metadata } = FatPtr::from_ptr::<Inner<U>>(fat_ptr);
 
-        this.inner_mut().metadata = metadata;
+        // SAFETY: `Inner` is `repr(C)` and has `metadata` at offset 0
+        unsafe { *(old_ptr as *mut usize) = metadata };
 
         ThinCell {
             // SAFETY: `ptr` is valid as it comes from `self`

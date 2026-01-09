@@ -1,10 +1,16 @@
- A compact, single-threaded smart pointer combining reference counting and
- interior mutability.
+# thin-cell
 
-`ThinCell` is a space-efficient alternative to `Rc` and `borrow_mut`-only
-`RefCell` that the itself is always **1 pointer-sized** no matter if `T` is
-`Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2
-pointer-sized for `T: !Sized`.
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/compio-rs/thin-cell/blob/master/LICENSE)
+[![crates.io](https://img.shields.io/crates/v/thin-cell)](https://crates.io/crates/thin-cell)
+[![docs.rs](https://img.shields.io/badge/docs.rs-thin--cell-latest)](https://docs.rs/thin-cell)
+[![Check](https://github.com/compio-rs/thin-cell/actions/workflows/ci_check.yml/badge.svg)](https://github.com/compio-rs/thin-cell/actions/workflows/ci_check.yml)
+[![Test](https://github.com/compio-rs/thin-cell/actions/workflows/ci_test.yml/badge.svg)](https://github.com/compio-rs/thin-cell/actions/workflows/ci_test.yml)
+[![Telegram](https://img.shields.io/badge/Telegram-compio--rs-blue?logo=telegram)](https://t.me/compio_rs)
+
+
+A compact, single-threaded smart pointer combining reference counting and interior mutability.
+
+`ThinCell` is a space-efficient alternative to `Rc` and `borrow_mut`-only `RefCell` that the itself is always **1 pointer-sized** no matter if `T` is `Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2 pointer-sized for `T: !Sized`.
 
 ## Features
 
@@ -15,8 +21,7 @@ pointer-sized for `T: !Sized`.
 
 ## How It Works
 
-`ThinCell` achieves its compact representation by storing metadata inline at
-offset 0 of the allocation (for unsized types) like `ThinBox` does.
+`ThinCell` achieves its compact representation by storing metadata inline at offset 0 of the allocation (for unsized types) like `ThinBox` does.
 
 Overall layout:
 
