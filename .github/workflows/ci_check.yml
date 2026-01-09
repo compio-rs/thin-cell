@@ -1,0 +1,41 @@
+name: Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Cargo.toml"
+      - "**/*.rs"
+      - ".github/workflows/ci_check.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Cargo.toml"
+      - "**/*.rs"
+      - ".github/workflows/ci_check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        run: |
+          rustup default nightly
+          rustup component add clippy
+      - name: Check clippy
+        shell: bash
+        run: |
+          cargo clippy -- -Dwarnings
+      - name: Check Docs
+        run: |
+          cargo doc --all-features --no-deps

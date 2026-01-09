@@ -1,0 +1,33 @@
+name: Check Code Format
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "rustfmt.toml"
+      - "Cargo.toml"
+      - "**/*.rs"
+      - ".github/workflows/ci_format.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "rustfmt.toml"
+      - "**/*.rs"
+      - ".github/workflows/ci_format.yml"
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        run: |
+          rustup default nightly
+          rustup component add rustfmt
+      - name: Check Format
+        run: cargo fmt --all -- --check

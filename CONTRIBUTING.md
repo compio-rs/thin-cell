@@ -1,0 +1,47 @@
+# Contributing
+
+Thanks for your help improving the project! We are so happy to have you! :tada:
+
+This guide will walk you through the process of contributing to thin-cell on following topics:
+
+- [General guidelines](#general-guidelines)
+  - [Develop Guide](#develop-guide)
+  - [Style Guide](#style-guide)
+- [Contribute with issue](#contribute-with-issue)
+- [Contribute with pull request](#contribute-with-pull-request)
+
+## General guidelines
+
+We adhere to [Rust Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct). tl;dr: **be nice**. Before making any contribution, check existing issue and pull requests to avoid duplication of effort. Also, in case of bug, try updating to the latest version of rust might help.
+
+### Develop Guide
+
+Use nightly toolchain to develop and run `rustup update` regularly. 
+
+### Style Guide
+
+- Use `cargo fmt --all` with nightly toolchain to format your code (for nightly `rustfmt` features, see detail in [`rustfmt.toml`]).
+- Use `cargo clippy --all` to check any style/code problem.
+- Use [Angular Convention](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format) when making commits
+
+[`rustfmt.toml`]: https://github.com/compio-rs/thin-cell/blob/master/rustfmt.toml
+
+## Contribute with issue
+
+If you find a bug or have a feature request, please [open an issue](https://github.com/compio-rs/thin-cell/issues/new) with detailed description. Issues that are lack of information or destructive will be requested for more information or closed.
+
+It's also helpful if you can provide the following information:
+
+- A minimal reproducible example
+- The version of thin-cell you are using.
+- The version of Rust you are using.
+- Your environment (OS, Platform, etc).
+
+## Contribute with pull request
+
+We welcome any code contributions. It's always welcome and recommended to open an issue to discuss on major changes before opening a PR. And pull requests should:
+
+- follow the [Style Guide](#style-guide).
+- pass CI tests and style check.
+- be reviewed by at least one maintainer before getting merged.
+- have a description of what it does and why it is needed in PR body.
