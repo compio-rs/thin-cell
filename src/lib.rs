@@ -3,6 +3,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 use std::{
+    any::{Any, TypeId},
     cell::{Cell, UnsafeCell},
     fmt::{self, Debug, Display},
     marker::PhantomData,
@@ -152,6 +153,18 @@ impl<T: ?Sized> ThinCell<T> {
         }
     }
 
+    /// Downcasts the `ThinCell<T>` to `ThinCell<U>`.
+    ///
+    /// # Safety
+    /// The caller must ensure that the inner value is actually of type `U`.
+    pub unsafe fn downcast_unchecked<U>(self) -> ThinCell<U> {
+        let this = ManuallyDrop::new(self);
+        ThinCell {
+            ptr: this.ptr,
+            _marker: PhantomData,
+        }
+    }
+
     /// Returns the number of owners.
     pub fn count(&self) -> usize {
         self.inner().state.get().count()
@@ -223,6 +236,16 @@ impl<T: ?Sized> ThinCell<T> {
             value,
             state_cell: &inner.state,
         })
+    }
+
+    /// Get a mutable reference to the inner value without any checks.
+    ///
+    /// # Safety
+    /// The caller must guarantee that there are no other owners and it is not
+    /// currently borrowed.
+    pub unsafe fn borrow_unchecked(&mut self) -> &mut T {
+        let inner = self.inner();
+        unsafe { &mut *inner.data.get() }
     }
 
     /// Creates a new `ThinCell<U>` from `data: U` and coerces it to
@@ -316,6 +339,27 @@ impl<T: ?Sized> ThinCell<T> {
         std::ptr::eq(self.as_ptr(), other.as_ptr())
     }
 }
+
+impl<T: Any + ?Sized> ThinCell<T> {
+    /// Attempts to downcast the `ThinCell<T>` to `ThinCell<U>`.
+    ///
+    /// Returns `Some(ThinCell<U>)` if the inner value is of type `U`, or
+    /// `None` otherwise.
+    pub fn downcast<U: Any>(self) -> Option<ThinCell<U>> {
+        let inner = self.inner();
+        let data_ref = unsafe { &*inner.data.get() };
+
+        if TypeId::of::<U>() == data_ref.type_id() {
+            // SAFETY: We have verified that the inner value is of type `U`
+            Some(unsafe { self.downcast_unchecked::<U>() })
+        } else {
+            None
+        }
+    }
+}
+
+/// `ThinCell` is `Unpin` as it does not move its inner data.
+impl<T: ?Sized + Send> Unpin for ThinCell<T> {}
 
 impl<'a, T: ?Sized> Drop for Ref<'a, T> {
     fn drop(&mut self) {

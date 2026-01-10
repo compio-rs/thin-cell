@@ -258,3 +258,39 @@ fn test_thin_rc() {
 
     other.borrow().greet(); // Robot 100
 }
+
+#[test]
+fn test_cast_back() {
+    let cell_dyn = unsafe { ThinCell::<dyn Greeter>::new_unsize(Robot { id: 114 }, |p| p as _) };
+    cell_dyn.borrow().greet();
+    let cell_concrete = unsafe { std::mem::transmute::<_, ThinCell<Robot>>(cell_dyn) };
+    cell_concrete.borrow().greet();
+}
+
+#[test]
+fn test_downcast() {
+    use std::any::Any;
+
+    trait Foo: Any {
+        fn foo(&self);
+    }
+
+    struct Baz {}
+    impl Foo for Baz {
+        fn foo(&self) {
+            println!("Baz foo");
+        }
+    }
+
+    let cell_dyn = unsafe { ThinCell::<dyn Foo>::new_unsize(Baz {}, |p| p as _) };
+    cell_dyn.borrow().foo();
+
+    let cell_any = unsafe { cell_dyn.unsize::<dyn Any>(|p| p as _) };
+
+    let downcasted = cell_any.downcast::<Baz>().unwrap();
+    downcasted.borrow().foo();
+
+    let cell_any = unsafe { downcasted.unsize::<dyn Any>(|p| p as _) };
+
+    assert!(cell_any.downcast::<String>().is_none());
+}
