@@ -3,14 +3,14 @@ name: Test
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - "**/*.rs"
       - "**/Cargo.toml"
       - ".github/workflows/ci_test.yml"
   pull_request:
     branches:
-      - master
+      - main
     paths:
       - "**/*.rs"
       - "**/Cargo.toml"

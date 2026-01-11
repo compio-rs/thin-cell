@@ -25,7 +25,7 @@ A compact, single-threaded smart pointer combining reference counting and interi
 
 Overall layout:
 
-```ignore
+```rust,ignore
 struct Inner<T> {
     metadata: usize,
     state: usize
