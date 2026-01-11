@@ -359,7 +359,7 @@ impl<T: Any + ?Sized> ThinCell<T> {
 }
 
 /// `ThinCell` is `Unpin` as it does not move its inner data.
-impl<T: ?Sized + Send> Unpin for ThinCell<T> {}
+impl<T: ?Sized> Unpin for ThinCell<T> {}
 
 impl<'a, T: ?Sized> Drop for Ref<'a, T> {
     fn drop(&mut self) {
