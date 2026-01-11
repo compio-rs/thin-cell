@@ -382,6 +382,12 @@ impl<'a, T: ?Sized> DerefMut for Ref<'a, T> {
     }
 }
 
+impl<'a, T: Debug + ?Sized> Debug for Ref<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&**self, f)
+    }
+}
+
 impl<'a, T: Display + ?Sized> Display for Ref<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt(&**self, f)
@@ -437,21 +443,22 @@ impl<T: Debug + ?Sized> Debug for ThinCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inner = self.inner();
         let state = inner.state.get();
-        let val = self.try_borrow();
-        struct Helper<'a, T: ?Sized>(Option<&'a T>);
-        impl<T: Debug + ?Sized> Debug for Helper<'_, T> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                match &self.0 {
-                    Some(v) => v.fmt(f),
-                    None => f.write_str("<borrowed>"),
-                }
-            }
+        let mut d = f.debug_struct("ThinCell");
+        match self.try_borrow() {
+            Some(borrowed) => d.field("value", &borrowed),
+            None => d.field("value", &"<borrowed>"),
         }
-        f.debug_struct("ThinCell")
-            .field("data", &Helper(val.as_deref()))
-            .field("ref_count", &state.count())
-            .field("is_borrowed", &state.is_borrowed())
-            .finish()
+        .field("state", &state)
+        .finish()
+    }
+}
+
+impl<T: Display + ?Sized> Display for ThinCell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.try_borrow() {
+            Some(borrowed) => Display::fmt(&*borrowed, f),
+            None => write!(f, "<borrowed>"),
+        }
     }
 }
 

@@ -1,10 +1,21 @@
+use std::{fmt::Debug, path::Display};
+
 /// Encapsulates the bitwise logic for Reference Counting and borrow flags.
 ///
 /// All bits except last are used for Reference Count (RC), while last bit is
 /// used for borrow flags (Borrowed).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub(crate) struct State(usize);
+
+impl Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("count", &self.count())
+            .field("borrowed", &self.is_borrowed())
+            .finish()
+    }
+}
 
 #[rustfmt::skip]
 impl State {
