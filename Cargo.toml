@@ -1,6 +1,6 @@
 [package]
 name = "thin-cell"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["George Miao <gm@miao.dev>"]
 description = "A compact, single-threaded smart pointer combining reference counting and interior mutability"
