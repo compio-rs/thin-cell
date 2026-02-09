@@ -38,7 +38,8 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
-        "rust-overlay": "rust-overlay"
+        "rust-overlay": "rust-overlay",
+        "verus-flake": "verus-flake"
       }
     },
     "rust-overlay": {
@@ -73,6 +74,29 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "verus-flake": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1766401728,
+        "narHash": "sha256-i+01fI+ZTlidgMpF9vRr2Qjl/3OICcowOTeu2+EA0Cs=",
+        "owner": "stephen-huan",
+        "repo": "verus-flake",
+        "rev": "dc3980b115fc8583b9ac04bb8e2c90ec64680986",
+        "type": "github"
+      },
+      "original": {
+        "owner": "stephen-huan",
+        "repo": "verus-flake",
         "type": "github"
       }
     }

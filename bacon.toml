@@ -1,0 +1,19 @@
+#:schema https://dystroy.org/bacon/.bacon.schema.json
+
+# This is a configuration file for the bacon tool
+#
+# Complete help on configuration: https://dystroy.org/bacon/config/
+#
+# You may check the current default at
+#   https://github.com/Canop/bacon/blob/main/defaults/default-bacon.toml
+
+default_job = "verify"
+env.CARGO_TERM_COLOR = "always"
+
+[jobs.verify]
+command = ["verus", "src/main.rs"]
+need_stdout = false
+
+[jobs.verify-compile]
+command = ["verus", "src/main.rs", "--compile"]
+need_stdout = false

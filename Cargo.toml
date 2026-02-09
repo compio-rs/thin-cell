@@ -11,3 +11,6 @@ homepage = "https://github.com/compio-rs/thin-cell"
 keywords = ["rc", "refcell", "smart-pointer", "interior-mutability", "thin"]
 categories = ["data-structures", "memory-management"]
 readme = "README.md"
+
+[package.metadata.verus]
+verify = true

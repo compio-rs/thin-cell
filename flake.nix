@@ -6,6 +6,11 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    verus-flake = {
+      url = "github:stephen-huan/verus-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
   };
 
   outputs =
@@ -13,6 +18,7 @@
       nixpkgs,
       rust-overlay,
       flake-utils,
+      verus-flake,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -22,17 +28,24 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        verusPkgs = verus-flake.packages.${system};
+        verusfmtForZed = pkgs.writeShellScriptBin "verusfmtForZed" ''
+          tmp=$(mktemp --suffix=.rs)
+          cat > "$tmp"
+          ${verusPkgs.verusfmt}/bin/verusfmt "$tmp"
+          cat "$tmp"
+        '';
       in
       with pkgs;
       {
         devShells.default = mkShell {
           buildInputs = [
-            go
-            cmake
-            glib
-            lldb
-            openssl
-            pkg-config
+            bacon
+            verusfmtForZed
+            verusPkgs.verusfmt
+            verusPkgs.rustup
+            verusPkgs.verus
+            verusPkgs.vargo
             (rust-bin.selectLatestNightlyWith (
               toolchain:
               toolchain.default.override {
