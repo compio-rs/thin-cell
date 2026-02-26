@@ -294,3 +294,9 @@ fn test_downcast() {
 
     assert!(cell_any.downcast::<String>().is_none());
 }
+
+#[test]
+fn test_coerce_slice() {
+    let cell = ThinCell::new([1, 1, 4, 5, 1, 4]).unsize_slice();
+    assert!(cell.borrow().len() == 6);
+}

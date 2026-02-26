@@ -340,6 +340,14 @@ impl<T: ?Sized> ThinCell<T> {
     }
 }
 
+impl<T, const N: usize> ThinCell<[T; N]> {
+    /// Coerce an array [`ThinCell`] to a slice one.
+    pub fn unsize_slice(self) -> ThinCell<[T]> {
+        // Safety: unsized coersion from array to slice is safe
+        unsafe { self.unsize(|ptr| ptr as _) }
+    }
+}
+
 impl<T: Any + ?Sized> ThinCell<T> {
     /// Attempts to downcast the `ThinCell<T>` to `ThinCell<U>`.
     ///
