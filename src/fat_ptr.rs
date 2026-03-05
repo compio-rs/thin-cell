@@ -11,16 +11,16 @@ pub struct FatPtr {
     pub metadata: usize,
 }
 
-pub const fn is_fat<T: ?Sized>() -> bool {
-    size_of::<*const T>() != size_of::<*const ()>()
+pub const fn is_sized<T: ?Sized>() -> bool {
+    size_of::<*const T>() == size_of::<*const ()>()
 }
 
 impl FatPtr {
     const fn assert_fat<T: ?Sized>() {
         const {
             assert!(
-                is_fat::<T>(),
-                "`T` must be a `!Thin` type, i.e., `*const T` must be a fat pointer"
+                !is_sized::<T>(),
+                "`T` must be a `!Thin` type, i.e., `*mut T` must be a fat pointer"
             );
         }
     }

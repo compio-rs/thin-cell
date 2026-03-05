@@ -27,12 +27,7 @@
       {
         devShells.default = mkShell {
           buildInputs = [
-            go
-            cmake
-            glib
-            lldb
-            openssl
-            pkg-config
+            cargo-nextest
             (rust-bin.selectLatestNightlyWith (
               toolchain:
               toolchain.default.override {

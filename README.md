@@ -7,23 +7,23 @@
 [![Test](https://github.com/compio-rs/thin-cell/actions/workflows/ci_test.yml/badge.svg)](https://github.com/compio-rs/thin-cell/actions/workflows/ci_test.yml)
 [![Telegram](https://img.shields.io/badge/Telegram-compio--rs-blue?logo=telegram)](https://t.me/compio_rs)
 
+A compact smart pointer combining reference counting and interior mutability.
 
-A compact, single-threaded smart pointer combining reference counting and interior mutability.
-
-`ThinCell` is a space-efficient alternative to `Rc` and `borrow_mut`-only `RefCell` that itself is always **1 pointer-sized** no matter if `T` is `Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2 pointer-sized for `T: !Sized`.
+`ThinCell` is a space-efficient alternative to `Rc<RefCell<T>>` or `Arc<Mutex<T>>` that itself is always **1 pointer-sized** no matter if `T` is `Sized` or not (like `ThinBox`), compare to `Rc<RefCell<T>>` which is 2 pointer-sized for `T: !Sized`.
 
 ## Features
 
 - One-`usize` pointer, no matter what `T` is
-- Reference counted ownership (like `Rc`)
+- Reference counted ownership (like `Rc` or `Arc`)
 - Interior mutability with only mutable borrows (so it only needs 1-bit to
   track borrow state)
+- Both `sync` and `unsync` versions, with the same API and slightly different behavior on borrow rules (see below)
 
 ## How It Works
 
 `ThinCell` achieves its compact representation by storing metadata inline at offset 0 of the allocation (for unsized types) like `ThinBox` does.
 
-Overall layout:
+Simplified layout:
 
 ```rust,ignore
 struct Inner<T> {
@@ -35,14 +35,19 @@ struct Inner<T> {
 
 ## Borrow Rules
 
-Unlike `RefCell` which supports multiple immutable borrows OR one mutable borrow, `ThinCell` only supports **one mutable borrow at a time**. Attempting to borrow while already borrowed will panic with `borrow` or return `None` with `try_borrow`.
+Unlike `RefCell` which supports multiple immutable borrows OR one mutable borrow, `ThinCell` only supports **one mutable borrow at a time**. Attempting to borrow while already borrowed will:
+
+- `sync::ThinCell<T>`: Thread-safe, uses `AtomicUsize` and blocking borrow semantics: borrowing while already borrowed will busy loop and `yield_now`.
+- `unsync::ThinCell<T>`: Single threaded, uses `Cell<usize>` and panicking borrow semantics: borrowing while already borrowed will panic.
+
+`try_borrow` is available for both versions, which returns `None` instead of panicking or blocking when already borrowed.
 
 # Examples
 
 ## Basic Usage
 
 ```rust
-# use thin_cell::ThinCell;
+# use thin_cell::unsync::ThinCell;
 let cell = ThinCell::new(42);
 
 // Clone to create multiple owners
@@ -63,7 +68,7 @@ assert_eq!(*cell2.borrow(), 100);
 Due to limitation of stable rust, or in particular, the lack of [`CoerceUnsized`](https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html), creating a `ThinCell<dyn Trait>` from a concrete type requires manual [`coercion`](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions), and that coercion's safety has to be guaranteed by the user. Normally just `ptr as *const Inner<MyUnsizedType>` or `ptr as _` with external type annotation is good enough:
 
 ```rust
-# use thin_cell::ThinCell;
+# use thin_cell::unsync::ThinCell;
 trait Animal {
     fn speak(&self) -> &str;
 }
@@ -87,7 +92,7 @@ assert_eq!(std::mem::size_of_val(&cell), std::mem::size_of::<usize>());
 ## Borrow Checking
 
 ```rust,should_panic
-use thin_cell::ThinCell;
+use thin_cell::unsync::ThinCell;
 
 let cell = ThinCell::new(42);
 
@@ -98,7 +103,7 @@ let borrow2 = cell.borrow(); // Panics! Already borrowed
 Use `try_borrow` for non-panicking behavior:
 
 ```rust
-# use thin_cell::ThinCell;
+# use thin_cell::unsync::ThinCell;
 let cell = ThinCell::new(42);
 
 let borrow1 = cell.borrow();

@@ -3,5 +3,14 @@
 version = 4
 
 [[package]]
+name = "synchrony"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "833f3fa2585e125e37cc9f07a0a80c101e243436adf382cdf2b3db8d02fc44e5"
+
+[[package]]
 name = "thin-cell"
 version = "0.1.2"
+dependencies = [
+ "synchrony",
+]
