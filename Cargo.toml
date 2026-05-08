@@ -16,7 +16,7 @@ readme = "README.md"
 weak = []
 
 [dependencies]
-synchrony = "0.1.7"
+synchrony = "0.1.8"
 
 [package.metadata.docs.rs]
 all-features = true
