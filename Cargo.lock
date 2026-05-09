@@ -174,9 +174,9 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "synchrony"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c174d82fd56da8214ec095cfe4568e59e5ccb49d060e70c2f98e3ba352b23e45"
+checksum = "416090a4d8f6358526df5f9f65dfe28750b8b7bfd1fd8a5620f483fc4a75722c"
 dependencies = [
  "loom",
 ]
